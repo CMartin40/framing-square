@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Independent Right Triangle Calculator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eaeaea; padding-bottom: 10px; }
+        .control-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; }
+        input[type="range"] { width: 100%; height: 8px; border-radius: 5px; background: #ddd; outline: none; margin-bottom: 5px; }
+        input[type="number"] { width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        .value-display { font-size: 18px; font-weight: bold; color: #2980b9; float: right; }
+        canvas { background: #fff; border: 1px solid #ddd; border-radius: 6px; display: block; margin: 20px auto; max-width: 100%; }
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px; background: #f9f9f9; padding: 15px; border-radius: 6px; }
+        .stat-item { font-size: 15px; }
+        .stat-item strong { color: #2c3e50; }
+        .results-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 14px; }
+        .results-table th { background-color: #2980b9; color: white; }
+        .results-table .accurate-row { background-color: #e8f8f5; font-weight: bold; }
+        .results-table .accurate-row th { background-color: #16a085; }
+        .apply-btn { background: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .apply-btn:hover { background: #219653; }
+        h3 { margin-bottom: 5px; color: #2c3e50; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📐 Right Triangle Optimizer</h2>
+    
+    <!-- Target Angle Input -->
+    <div class="control-group">
+        <label for="targetAngle">Type Target Angle A (°):</label>
+        <input type="number" id="targetAngle" min="1" max="89" step="any" placeholder="e.g. 40">
+        <span style="font-size: 12px; color: #7f8c8d; margin-left: 10px;">Finds largest scales & absolute best accuracy</span>
+    </div>
+
+    <!-- Sliders -->
+    <div class="control-group clearfix">
+        <label for="legA">Leg A (Vertical side): <span id="valA" class="value-display">0</span></label>
+        <input type="range" id="legA" min="0" max="350" value="339">
+    </div>
+
+    <div class="control-group clearfix">
+        <label for="legB">Leg B (Horizontal side): <span id="valB" class="value-display">0</span></label>
+        <input type="range" id="legB" min="0" max="550" value="404">
+    </div>
+
+    <!-- Canvas Visualization -->
+    <canvas id="triangleCanvas" width="400" height="300"></canvas>
+
+    <!-- Metrics -->
+    <div class="stats-grid">
+        <div class="stat-item"><strong>Hypotenuse (c):</strong> <span id="statC">0</span></div>
+        <div class="stat-item"><strong>Area:</strong> <span id="statArea">0</span></div>
+        <div class="stat-item"><strong>Angle A:</strong> <span id="statAngleA">0°</span></div>
+        <div class="stat-item"><strong>Angle B:</strong> <span id="statAngleB">0°</span></div>
+    </div>
+
+    <!-- Absolute Most Accurate -->
+    <h3>🎯 Ultimate Precision Match</h3>
+    <table class="results-table">
+        <thead>
+            <tr class="accurate-row">
+                <th style="width: 15%;">Type</th>
+                <th>Leg A</th>
+                <th>Leg B</th>
+                <th>Result Angle</th>
+                <th>Error Margin</th>
+                <th style="width: 15%;">Action</th>
+            </tr>
+        </thead>
+        <tbody id="accurateBody">
+            <tr><td colspan="6" style="color:#7f8c8d;">Enter an angle above...</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Top 3 Biggest -->
+    <h3>🏆 Top 3 Largest Combinations</h3>
+    <table class="results-table">
+        <thead>
+            <tr>
+                <th style="width: 15%;">Rank</th>
+                <th>Leg A</th>
+                <th>Leg B</th>
+                <th>Result Angle</th>
+                <th>Error Margin</th>
+                <th style="width: 15%;">Action</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody">
+            <tr><td colspan="6" style="color:#7f8c8d;">Enter an angle above...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    const legASlider = document.getElementById('legA');
+    const legBSlider = document.getElementById('legB');
+    const targetAngleInput = document.getElementById('targetAngle');
+    
+    const valA = document.getElementById('valA');
+    const valB = document.getElementById('valB');
+    
+    const statC = document.getElementById('statC');
+    const statArea = document.getElementById('statArea');
+    const statAngleA = document.getElementById('statAngleA');
+    const statAngleB = document.getElementById('statAngleB');
+    
+    const accurateBody = document.getElementById('accurateBody');
+    const resultsBody = document.getElementById('resultsBody');
+    const canvas = document.getElementById('triangleCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function updateCalculations() {
+        const a = parseInt(legASlider.value);
+        const b = parseInt(legBSlider.value);
+        
+        valA.textContent = a;
+        valB.textContent = b;
+
+        if (a === 0 || b === 0) {
+            statC.textContent = "0";
+            statArea.textContent = "0";
+            statAngleA.textContent = "0°";
+            statAngleB.textContent = "0°";
+            drawTriangle(0, 0);
+            return;
+        }
+
+        const c = Math.sqrt(a*a + b*b);
+        const area = 0.5 * a * b;
+        
+        const angleA_rad = Math.atan2(a, b);
+        const angleA_deg = angleA_rad * (180 / Math.PI);
+        const angleB_deg = 90 - angleA_deg;
+
+        statC.textContent = c.toFixed(2);
+        statArea.textContent = area.toFixed(1);
+        statAngleA.textContent = angleA_deg.toFixed(2) + "°";
+        statAngleB.textContent = angleB_deg.toFixed(2) + "°";
+
+        drawTriangle(a, b);
+    }
+
+    function drawTriangle(a, b) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (a === 0 || b === 0) return;
+
+        const scale = Math.min((canvas.width - 60) / 550, (canvas.height - 60) / 350);
+        
+        const startX = 40;
+        const startY = canvas.height - 40;
+        const endX = startX + (b * scale);
+        const endY = startY - (a * scale);
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, startY);
+        ctx.lineTo(startX, endY);
+        ctx.closePath();
+
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#2980b9';
+        ctx.fillStyle = 'rgba(41, 128, 185, 0.1)';
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#333';
+        ctx.strokeRect(startX, startY - 12, 12, 12);
+    }
+
+    function searchAngle() {
+        const target = parseFloat(targetAngleInput.value);
+        if (isNaN(target) || target <= 0 || target >= 90) return;
+
+        let allPairs = [];
+
+        for (let a = 1; a <= 350; a++) {
+            for (let b = 1; b <= 550; b++) {
+                const angle = Math.atan2(a, b) * (180 / Math.PI);
+                const error = Math.abs(angle - target);
+                const sizeMetric = a + b; 
+
+                allPairs.push({ a, b, angle, error, sizeMetric });
+            }
+        }
+
+        let sortedByAccuracy = [...allPairs].sort((x, y) => x.error - y.error);
+        const absoluteBest = sortedByAccuracy[0];
+
+        let sortedByLargest = [...allPairs].sort((x, y) => {
+            if (Math.abs(x.error - y.error) < 0.05) {
+                return y.sizeMetric - x.sizeMetric; 
+            }
+            return x.error - y.error;
+        });
+
+        let uniqueLargest = [];
+        for (let i = 0; i < sortedByLargest.length; i++) {
+            const current = sortedByLargest[i];
+            const isDuplicate = uniqueLargest.some(u => 
+                (u.a === current.a && u.b === current.b) || 
+                Math.abs(u.angle - current.angle) < 0.00001
+            );
+            if (!isDuplicate) {
+                uniqueLargest.push(current);
+            }
+            if (uniqueLargest.length >= 3) break;
+        }
+
+        const sign = (absoluteBest.angle - target) >= 0 ? "+" : "-";
+        accurateBody.innerHTML = `
+            <tr class="accurate-row">
+                <td>Exact Best</td>
+                <td>${absoluteBest.a}</td>
+                <td>${absoluteBest.b}</td>
+                <td>${absoluteBest.angle.toFixed(4)}°</td>
+                <td style="color: #16a085;">${sign}${absoluteBest.error.toFixed(4)}°</td>
+                <td><button class="apply-btn" style="background:#16a085;" onclick="applyValues(${absoluteBest.a}, ${absoluteBest.b})">Apply</button></td>
+            </tr>
+        `;
+
+        resultsBody.innerHTML = "";
+        uniqueLargest.forEach((match, index) => {
+            const matchSign = (match.angle - target) >= 0 ? "+" : "-";
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>#${index + 1} Large</strong></td>
+                <td>${match.a}</td>
+                <td>${match.b}</td>
+                <td>${match.angle.toFixed(2)}°</td>
+                <td>${matchSign}${match.error.toFixed(3)}°</td>
+                <td><button class="apply-btn" onclick="applyValues(${match.a}, ${match.b})">Apply</button></td>
+            `;
+            resultsBody.appendChild(row);
+        });
+
+        if (uniqueLargest.length > 0) {
+            applyValues(uniqueLargest[0].a, uniqueLargest[0].b);
+        }
+    }
+
+    window.applyValues = function(a, b) {
+        legASlider.value = a;
+        legBSlider.value = b;
+        updateCalculations();
+    };
+
+    legASlider.addEventListener('input', () => { targetAngleInput.value = ''; updateCalculations(); });
+    legBSlider.addEventListener('input', () => { targetAngleInput.value = ''; updateCalculations(); });
+    targetAngleInput.addEventListener('input', searchAngle);
+
+    updateCalculations();
+</script>
+
+</body>
+</html>
